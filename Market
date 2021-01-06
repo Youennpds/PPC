@@ -1,25 +1,37 @@
-from threading import Thread, Lock, Semaphore, current_thread
+from multiprocessing import Process
+import random
+import time
 
 global energy          #à mettre dans shared memory
 global energyPrice     #à mettre dans shared memory
 
-def Market():
+def Market(energy,energyMoy):
     
     while True:            # à remplacer par Lock ou Semaphore
+        if energy > energyMoy:
+           energy = sellEnergy(energy)
+        else: 
+           energy = buyEnergy(energy)
+        
+        print(energy)    
 
-        sellEnergy():
-        buyEnergy():
 
 
+def sellEnergy(energy):             
+    eng = energy + random.randint(-5,0)
+    return eng
 
-sellEnergy():
-
-
-buyEnergy():
+def buyEnergy(energy):
+    eng = energy + random.randint(0,5)
+    return eng
 
 
 if __name__ == "__main__":
-    market = Thread(target=Market)
+    energyMoy = 20
+    energy = 25
+
+    market = Process(target=Market,args=(energy,energyMoy))
+    
 
     market.start()
     market.stop()
