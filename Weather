@@ -1,0 +1,16 @@
+from threading import Thread
+
+global temperature   #à mettre dans shared memory
+global sun           #à mettre dans shared memory
+global wind          #à mettre dans shared memory
+
+def weather():
+
+
+
+
+if __name__=="__main__":
+    weather = Thread(target=weather)
+    weather.start()
+    weather.stop()
+
