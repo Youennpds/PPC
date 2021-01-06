@@ -1,0 +1,25 @@
+from threading import Thread, Lock, Semaphore, current_thread
+
+global energy          #à mettre dans shared memory
+global energyPrice     #à mettre dans shared memory
+
+def Market():
+    
+    while True:            # à remplacer par Lock ou Semaphore
+
+        sellEnergy():
+        buyEnergy():
+
+
+
+sellEnergy():
+
+
+buyEnergy():
+
+
+if __name__ == "__main__":
+    market = Thread(target=Market)
+
+    market.start()
+    market.stop()
