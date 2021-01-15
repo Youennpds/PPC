@@ -1,0 +1,89 @@
+from multiprocessing import Process, Array, Pool
+from threading import Semaphore
+import random
+import time
+import sys
+
+
+def electricCentral (numberOfHomes,maxCapacity) :
+    while True :
+        if energies[0] < numberOfHomes*20 + maxCapacity :
+            energies[0] += numberOfHomes*20
+
+
+
+def Home (numberOfHomes,NumberOfProducers,energyShareMAX,cond) :
+
+    while True :
+        m = NumberOfProducers   #Number of homes with production of energy
+        cons = random.randint(0, 32-temperature)
+        if cond :
+            i = random.randrange(0,1)
+            if i == 0 :                          #1/3 of the energy is produced by wind turbines
+                prod = random.randint(0, 50*windIndex)      #Nominal power = 3/6 kWc
+                                                    # -> 259 200/518 400 kWh
+            else :                 #2/3 of the energy is produced by solar panels
+                prod = random.randint(0, 60*sunIndex)
+            diff = prod-cons
+        else :
+            diff = -cons
+        if diff < 0 :
+            semaphore.acquire()
+            if energies[1] + diff >= 0 :
+                energies[1] += diff
+            else :
+                a = energies[1]
+                energies[1] = 0
+                energies[0] += diff + a
+            semaphore.release()
+        elif diff > 0 :
+            a = random.randint(0,1)
+            semaphore.acquire()
+            if a == 0 :
+                if energies[1] < energyShareMAX :
+                    energies[1] += diff
+                else :
+                    energies[0] += diff
+            if a == 1 :
+                energies[0] += diff
+            semaphore.release()
+
+def showEnergy () :
+    while True :
+        print("EDF's energy :",energies[0],"kWh")
+        print("Energy shared :",energies[1],"kWh")
+        time.sleep(1)
+
+if __name__ == "__main__":
+
+    numberOfHomes = int(sys.argv[1])
+    energies = Array('i', range(2))
+    energies[0] = numberOfHomes*20
+    energies[1] = 0
+
+    maxCapacity = numberOfHomes*20*700
+    electricCentral =  Process(target=electricCentral, args=(numberOfHomes,maxCapacity))
+    electricCentral.start()
+
+    temperature = 0
+    windIndex = 0.4
+    sunIndex = 0.3
+
+    showEnergy = Process(target=showEnergy)
+    showEnergy.start()
+
+    energyShareMAX = 1000000
+    NumberOfProducers = int(sys.argv[2])
+    semaphore = Semaphore()
+    Homes = {}
+    for i in range (NumberOfProducers) :
+        Homes[i] =  Process(target=Home, args=(numberOfHomes,NumberOfProducers,energyShareMAX,True))
+        Homes[i].start()
+    for i in range (NumberOfProducers,numberOfHomes) :
+        Homes[i] =  Process(target=Home, args=(numberOfHomes,NumberOfProducers,energyShareMAX,False))
+        Homes[i].start()
+
+    for i in range (numberOfHomes) :
+        Homes[i].join()
+    electricCentral.join()
+    showEnergy.join()
