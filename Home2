@@ -1,8 +1,8 @@
 from multiprocessing import Process, Array, Pool
-from threading import Semaphore
 import random
 import time
 import sys
+import math
 
 
 def electricCentral (numberOfHomes,maxCapacity) :
@@ -10,7 +10,18 @@ def electricCentral (numberOfHomes,maxCapacity) :
         if energies[0] < numberOfHomes*20 + maxCapacity :
             energies[0] += numberOfHomes*20
 
-
+def Weather () :
+    global temperature
+    global sunIndex
+    global windindex
+    day = 0
+    while True :
+        time.sleep(1)
+        sunIndex = random.random()
+        windIndex = random.random()
+        temperature = 40*math.sin(day/365*math.pi) - 5
+        print ("Temperature :",temperature)
+        day += 1
 
 def Home (numberOfHomes,NumberOfProducers,energyShareMAX,cond) :
 
@@ -28,17 +39,14 @@ def Home (numberOfHomes,NumberOfProducers,energyShareMAX,cond) :
         else :
             diff = -cons
         if diff < 0 :
-            semaphore.acquire()
             if energies[1] + diff >= 0 :
                 energies[1] += diff
             else :
                 a = energies[1]
                 energies[1] = 0
                 energies[0] += diff + a
-            semaphore.release()
         elif diff > 0 :
             a = random.randint(0,1)
-            semaphore.acquire()
             if a == 0 :
                 if energies[1] < energyShareMAX :
                     energies[1] += diff
@@ -46,7 +54,6 @@ def Home (numberOfHomes,NumberOfProducers,energyShareMAX,cond) :
                     energies[0] += diff
             if a == 1 :
                 energies[0] += diff
-            semaphore.release()
 
 def showEnergy () :
     while True :
@@ -55,6 +62,9 @@ def showEnergy () :
         time.sleep(1)
 
 if __name__ == "__main__":
+
+    Weather = Process(target=Weather)
+    Weather.start()
 
     numberOfHomes = int(sys.argv[1])
     energies = Array('i', range(2))
@@ -74,7 +84,6 @@ if __name__ == "__main__":
 
     energyShareMAX = 1000000
     NumberOfProducers = int(sys.argv[2])
-    semaphore = Semaphore()
     Homes = {}
     for i in range (NumberOfProducers) :
         Homes[i] =  Process(target=Home, args=(numberOfHomes,NumberOfProducers,energyShareMAX,True))
@@ -83,6 +92,7 @@ if __name__ == "__main__":
         Homes[i] =  Process(target=Home, args=(numberOfHomes,NumberOfProducers,energyShareMAX,False))
         Homes[i].start()
 
+    Weather.join()
     for i in range (numberOfHomes) :
         Homes[i].join()
     electricCentral.join()
