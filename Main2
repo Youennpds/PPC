@@ -1,0 +1,132 @@
+from multiprocessing import Process, Array, Pool, Value
+import random
+import time
+import sys
+import math
+
+
+def electricCentral (numberOfHomes,maxCapacity) :
+    while True :
+        if energies[0] + energies[2] < numberOfHomes*20 + maxCapacity :
+            energies[2] += numberOfHomes*20
+
+def Market(energyMin,numberOfHomes,maxCapacity,energyShareMAX):
+    maxEnergie = numberOfHomes*20 + maxCapacity
+    energiePricet_1 = 0.1557
+    diff = 0    #difference between the energy of the plant taken and the energy purchased
+    tention = 1
+    while True :
+        if energies[2] > energyMin :
+            if maxEnergie > energies[0] :
+                diff += energies[2] - energyMin
+                energies[0] += diff
+                energies[2] = energyMin
+        else :
+            diff -= energies[1]
+            buyEnergy(energies[0])
+        energiePricet.value = energiePricet_1 + 0.0001*Temperature.value + 0.001*tention + (-0.001)*energies[0]/maxEnergie + 0.001*energies[2]/maxEnergie - 0.001*diff/(max(maxEnergie,energyShareMAX))
+        energiePricet_1  = energiePricet.value
+
+def buyEnergy (energie) :
+    if energies[1] > 0 :
+        energies[0] += energies[1]
+        energies[1] = 0
+
+def Weather () :
+    day = 0
+    while True :
+        weatherData[1] = random.random()
+        weatherData[0] = random.random()
+        Temperature.value = 40*math.sin(day/365*math.pi) - 5
+        day += 1
+        time.sleep(1)
+
+def Home (numberOfHomes,NumberOfProducers,energyShareMAX,cond) :
+
+    while True :
+        m = NumberOfProducers   #Number of homes with production of energy
+        cons = random.randint(0, int(32-Temperature.value))
+        if cond :
+            i = random.randrange(0,1)
+            if i == 0 :                          #1/3 of the energy is produced by wind turbines
+                prod = random.randint(0, int(50*weatherData[0]))   #Nominal power = 3/6 kWc
+                                                    # -> 259 200/518 400 kWh
+            else :                 #2/3 of the energy is produced by solar panels
+                prod = random.randint(0, int(60*weatherData[1]))
+            diff = prod-cons
+        else :
+            diff = -cons
+        if diff < 0 :
+            if energies[1] + diff >= 0 :
+                energies[1] += diff
+            else :
+                a = energies[1]
+                energies[1] = 0
+                energies[0] += diff + a
+        elif diff > 0 :
+            a = random.randint(0,1)
+            if a == 0 :
+                if energies[1] < energyShareMAX :
+                    energies[1] += diff
+                else :
+                    energies[0] += diff
+            if a == 1 :
+                energies[0] += diff
+
+def show () :
+    while True :
+        print("EDF's energy :",energies[0],"kWh")
+        print("Energy shared :",energies[1],"kWh")
+        print ("Temperature :",Temperature.value)
+        print ("windIndex :",weatherData[0])
+        print ("sundIndex :",weatherData[1])
+        print("energie price",energiePricet.value,"\n")
+        time.sleep(1)
+
+if __name__ == "__main__":
+
+    Temperature = Value('d', 0.0)
+    weatherData = Array('d', range(2))     # windIndex sunIndex
+    weatherData[0] = 0.4    # range (0:1)
+    weatherData[1] = 0.3    # range (0:1)
+
+    Weather = Process(target=Weather)
+    Weather.start()
+
+    numberOfHomes = int(sys.argv[1])
+    energies = Array('i', range(3))
+    energies[0] = numberOfHomes*20
+    energies[1] = 0
+    energies[2] = 0
+
+    energiePricet = Value('d', 0.0)
+    energyMin = numberOfHomes*20*7   # one week per home
+    maxCapacity = numberOfHomes*20*700
+    energyShareMAX = numberOfHomes*60
+
+    Market = Process(target=Market, args=(energyMin,numberOfHomes,maxCapacity,energyShareMAX))
+    Market.start()
+
+
+    electricCentral =  Process(target=electricCentral, args=(numberOfHomes,maxCapacity))
+    electricCentral.start()
+
+    show = Process(target=show)
+    show.start()
+
+
+    NumberOfProducers = int(sys.argv[2])
+    Homes = {}
+    for i in range (NumberOfProducers) :
+        Homes[i] =  Process(target=Home, args=(numberOfHomes,NumberOfProducers,energyShareMAX,True))
+        Homes[i].start()
+    for i in range (NumberOfProducers,numberOfHomes) :
+        Homes[i] =  Process(target=Home, args=(numberOfHomes,NumberOfProducers,energyShareMAX,False))
+        Homes[i].start()
+
+    Market.join()
+    Weather.join()
+    for i in range (numberOfHomes) :
+        Homes[i].join()
+    electricCentral.join()
+    show.join()
