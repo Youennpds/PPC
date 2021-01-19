@@ -14,8 +14,8 @@ def Market(energyMin,numberOfHomes,maxCapacity,energyShareMAX):
     maxEnergie = numberOfHomes*20 + maxCapacity
     energiePricet_1 = 0.1557
     diff = 0    #difference between the energy of the plant taken and the energy purchased
-    tention = 1
     while True :
+        tention = random.randint(0,1)
         if energies[2] > energyMin :
             if maxEnergie > energies[0] :
                 diff += energies[2] - energyMin
@@ -24,7 +24,7 @@ def Market(energyMin,numberOfHomes,maxCapacity,energyShareMAX):
         else :
             diff -= energies[1]
             buyEnergy(energies[0])
-        energiePricet.value = energiePricet_1 + 0.0001*Temperature.value + 0.001*tention + (-0.001)*energies[0]/maxEnergie + 0.001*energies[2]/maxEnergie - 0.001*diff/(max(maxEnergie,energyShareMAX))
+        energiePricet.value = 0.995*energiePricet_1 + (-10e-9)*Temperature.value + 10e-7*tention + (-10e-11)*energies[0]/maxEnergie + 10e-12*energies[2]/maxEnergie + 10e-12*(-diff)/(max(maxEnergie,energyShareMAX))
         energiePricet_1  = energiePricet.value
 
 def buyEnergy (energie) :
