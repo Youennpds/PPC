@@ -3,25 +3,69 @@ import random
 import time
 import sys
 import math
+import os
+import signal
 
+war = 0
+crisis = 0
 
 def electricCentral (numberOfHomes,maxCapacity) :
     while True :
         if energies[0] + energies[2] < numberOfHomes*20 + maxCapacity :
-            energies[2] += numberOfHomes*20
+            energies[2] += numberOfHomes*20*7
 
-def Market(energyMin):
+def PoliticsHandler(sig, frame):
+    war = 1
+    time.sleep(2)
+    war = 0
 
+def EconomicsHandler(sig, frame):
+    crisis = 1
+    time.sleep(2)
+    crisis = 0
+
+
+
+def Politics():
+    while True :
+        if random.randint(0,1) == 1 :
+            os.kill(int(os.getppid()),signal.SIGUSR1)
+        time.sleep(3)
+
+def Economics():
+    while True :
+        if random.randint(0,1) == 1 :
+            os.kill(int(os.getppid()),signal.SIGUSR2)
+        time.sleep(3)
+
+
+def Market(energyMin,numberOfHomes,maxCapacity,energyShareMAX):
+    signal.signal(signal.SIGUSR1,PoliticsHandler)
+    signal.signal(signal.SIGUSR2,EconomicsHandler)
+    economics = Process(target=Economics)
+    politics = Process(target=Politics)
+    economics.start()
+    politics.start()
+
+    maxEnergie = numberOfHomes*20 + maxCapacity
+    energiePricet_1 = 0.1557
+    diff = 0    #difference between the energy of the plant taken and the energy purchased
     while True :
         if energies[2] > energyMin :
-           energies[0] += energies[2] - energyMin
-           energies[2] = energyMin
+            if maxEnergie > (energies[0] - energyMin + energies[2]) :
+                diff += energies[2] - energyMin
+                energies[0] += diff
+                energies[2] = energyMin
         else :
-           buyEnergy(energies[0])
+            diff -= energies[1]
+            buyEnergy(energies[0])
+        energiePricet.value = (1-10e-15)*energiePricet_1 + (-10e-9)*Temperature.value + 10e-7*war + (-10e-11)*energies[0]/maxEnergie + 10e-12*energies[2]/maxEnergie + 10e-12*(-diff)/(max(maxEnergie,energyShareMAX)) + 10e-10*crisis
+        energiePricet_1  = energiePricet.value
 
 def buyEnergy (energie) :
     if energies[1] > 0 :
         energies[0] += energies[1]
+        energies[1] = 0
 
 def Weather () :
     day = 0
@@ -70,7 +114,8 @@ def show () :
         print("Energy shared :",energies[1],"kWh")
         print ("Temperature :",Temperature.value)
         print ("windIndex :",weatherData[0])
-        print ("sundIndex :",weatherData[1],"\n")
+        print ("sundIndex :",weatherData[1])
+        print("energie price",energiePricet.value,"\n")
         time.sleep(1)
 
 if __name__ == "__main__":
@@ -89,19 +134,22 @@ if __name__ == "__main__":
     energies[1] = 0
     energies[2] = 0
 
-    energyMin = 400
+    energiePricet = Value('d', 0.0)
+    energyMin = numberOfHomes*20*7   # one week per home
+    maxCapacity = numberOfHomes*20*700
+    energyShareMAX = numberOfHomes*60
 
-    Market = Process(target=Market, args=(energyMin,))
+    Market = Process(target=Market, args=(energyMin,numberOfHomes,maxCapacity,energyShareMAX))
     Market.start()
 
-    maxCapacity = numberOfHomes*20*700
+
     electricCentral =  Process(target=electricCentral, args=(numberOfHomes,maxCapacity))
     electricCentral.start()
 
-    show = Process(target=show)
+    show = Process(target=show, args=())
     show.start()
 
-    energyShareMAX = 1000000
+
     NumberOfProducers = int(sys.argv[2])
     Homes = {}
     for i in range (NumberOfProducers) :
